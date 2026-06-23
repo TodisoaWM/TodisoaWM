@@ -1,0 +1,64 @@
+name: Build APK - Facture Akoufre
+
+on:
+  push:
+    branches: [ "claude/zen-volta-m34th6", "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.2'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        working-directory: facture_akoufre
+        run: flutter pub get
+
+      - name: Analyze code
+        working-directory: facture_akoufre
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        working-directory: facture_akoufre
+        run: flutter test
+
+      - name: Build APK (release)
+        working-directory: facture_akoufre
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Build APK (debug - pour tester rapidement)
+        working-directory: facture_akoufre
+        run: flutter build apk --debug
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: facture-akoufre-release
+          path: facture_akoufre/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: facture-akoufre-debug
+          path: facture_akoufre/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
