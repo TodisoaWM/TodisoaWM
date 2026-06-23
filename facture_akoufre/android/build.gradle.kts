@@ -16,6 +16,15 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// Force compileSdk 35 for all Android plugin subprojects (fixes android:attr/lStar)
+subprojects {
+    afterEvaluate {
+        extensions.findByType<com.android.build.gradle.BaseExtension>()?.apply {
+            compileSdkVersion(35)
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
