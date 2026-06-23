@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Factures — FacturePro{% endblock %}
+{% block page_title %}Factures{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('invoice_new') }}" class="btn btn-primary btn-sm">
+  <i class="bi bi-plus-lg me-1"></i>Nouvelle facture
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+  <form class="d-flex gap-2" method="GET">
+    <input type="hidden" name="status" value="{{ status_filter }}">
+    <input type="search" name="q" value="{{ q }}" placeholder="Rechercher..."
+      class="form-control form-control-sm" style="max-width:240px">
+    <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-search"></i></button>
+  </form>
+  {% set statuses = [('','Tout'), ('brouillon','Brouillon'), ('envoyée','Envoyée'), ('payée','Payée'), ('annulée','Annulée')] %}
+  {% for val, label in statuses %}
+  <a href="{{ url_for('invoices_list', status=val, q=q) }}"
+    class="btn btn-sm {{ 'btn-primary' if status_filter == val else 'btn-outline-secondary' }}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="table-card">
+  {% if invoices %}
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th class="ps-4">N° Facture</th>
+        <th>Client</th>
+        <th>Date</th>
+        <th>Échéance</th>
+        <th>Montant</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in invoices %}
+      {% set inv = row.invoice %}
+      <tr>
+        <td class="ps-4 fw-semibold">{{ inv.number }}</td>
+        <td>{{ inv.client_name }}</td>
+        <td>{{ inv.issue_date | dateformat }}</td>
+        <td class="{{ 'text-danger fw-semibold' if row.overdue else '' }}">
+          {{ inv.due_date | dateformat }}
+          {% if row.overdue %}<i class="bi bi-exclamation-circle ms-1"></i>{% endif %}
+        </td>
+        <td class="fw-semibold">{{ row.total | currency }}</td>
+        <td>
+          {% if row.overdue and inv.status not in ['payée','annulée'] %}
+          <span class="badge-status s-retard">En retard</span>
+          {% else %}
+          <span class="badge-status s-{{ inv.status | replace('é','e') | replace('è','e') }}">
+            {{ inv.status | capitalize }}
+          </span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('invoice_view', inv_id=inv.id) }}" class="btn btn-sm btn-outline-primary me-1" title="Voir">
+            <i class="bi bi-eye"></i>
+          </a>
+          <a href="{{ url_for('invoice_pdf', inv_id=inv.id) }}" class="btn btn-sm btn-outline-secondary me-1" title="PDF">
+            <i class="bi bi-file-pdf"></i>
+          </a>
+          <form method="POST" action="{{ url_for('invoice_delete', inv_id=inv.id) }}" class="d-inline"
+            onsubmit="return confirm('Supprimer cette facture ?')">
+            <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-file-earmark-text" style="font-size:2.5rem"></i>
+    <p class="mt-2">Aucune facture trouvée.<br>
+      <a href="{{ url_for('invoice_new') }}">Créer une facture</a>
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}Tableau de bord — FacturePro{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('invoice_new') }}" class="btn btn-primary btn-sm">
+  <i class="bi bi-plus-lg me-1"></i>Nouvelle facture
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stat cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card d-flex align-items-center gap-3">
+      <div class="icon" style="background:#dbeafe"><i class="bi bi-file-earmark-text" style="color:#2563eb"></i></div>
+      <div>
+        <div class="label">Total factures</div>
+        <div class="value">{{ total_invoices }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card d-flex align-items-center gap-3">
+      <div class="icon" style="background:#dcfce7"><i class="bi bi-check-circle" style="color:#16a34a"></i></div>
+      <div>
+        <div class="label">Payées</div>
+        <div class="value">{{ paid }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card d-flex align-items-center gap-3">
+      <div class="icon" style="background:#fef3c7"><i class="bi bi-clock" style="color:#d97706"></i></div>
+      <div>
+        <div class="label">En attente</div>
+        <div class="value">{{ pending }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card d-flex align-items-center gap-3">
+      <div class="icon" style="background:#fee2e2"><i class="bi bi-exclamation-triangle" style="color:#dc2626"></i></div>
+      <div>
+        <div class="label">En retard</div>
+        <div class="value">{{ overdue }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Revenue card + Chart -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card h-100">
+      <div class="label mb-1">Revenus encaissés</div>
+      <div class="value" style="color:#2563eb">{{ total_revenue | currency }}</div>
+      <div class="mt-3 text-muted" style="font-size:.82rem">Toutes les factures payées</div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="stat-card h-100">
+      <div class="label mb-3">Factures par mois (6 derniers mois)</div>
+      <canvas id="monthChart" height="90"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Recent invoices -->
+<div class="table-card">
+  <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
+    <span class="fw-600" style="font-size:.95rem; font-weight:600">Factures récentes</span>
+    <a href="{{ url_for('invoices_list') }}" class="btn btn-outline-primary btn-sm">Voir tout</a>
+  </div>
+  {% if recent %}
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th class="ps-4">N° Facture</th>
+        <th>Client</th>
+        <th>Date</th>
+        <th>Échéance</th>
+        <th>Montant</th>
+        <th>Statut</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in recent %}
+      {% set inv = row.invoice %}
+      <tr>
+        <td class="ps-4 fw-semibold">{{ inv.number }}</td>
+        <td>{{ inv.client_name }}</td>
+        <td>{{ inv.issue_date | dateformat }}</td>
+        <td>{{ inv.due_date | dateformat }}</td>
+        <td class="fw-semibold">{{ row.total | currency }}</td>
+        <td>
+          <span class="badge-status s-{{ inv.status | replace('é','e') | replace('è','e') }}">
+            {{ inv.status | capitalize }}
+          </span>
+        </td>
+        <td>
+          <a href="{{ url_for('invoice_view', inv_id=inv.id) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-file-earmark-text" style="font-size:2.5rem"></i>
+    <p class="mt-2">Aucune facture pour le moment.<br>
+      <a href="{{ url_for('invoice_new') }}">Créez votre première facture</a>
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ctx = document.getElementById('monthChart');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ monthly_labels | tojson }},
+    datasets: [{
+      label: 'Factures',
+      data: {{ monthly_counts | tojson }},
+      backgroundColor: 'rgba(37,99,235,0.7)',
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f1f5f9' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+</script>
+{% endblock %}

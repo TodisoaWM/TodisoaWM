@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} facture — FacturePro{% endblock %}
+{% block page_title %}{{ action }} une facture{% endblock %}
+
+{% block content %}
+<form method="POST" id="invoiceForm">
+<div class="row g-4">
+
+  <!-- Colonne gauche : infos principales -->
+  <div class="col-md-8">
+    <div class="stat-card mb-4">
+      <h6 class="fw-700 mb-3" style="color:#1e293b; font-weight:700">Informations</h6>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Client <span class="text-danger">*</span></label>
+          <select name="client_id" class="form-select" required>
+            <option value="">— Sélectionner —</option>
+            {% for c in clients %}
+            <option value="{{ c.id }}" {{ 'selected' if invoice and invoice.client_id == c.id }}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="mt-1">
+            <a href="{{ url_for('client_new') }}" class="small text-primary"><i class="bi bi-plus"></i> Nouveau client</a>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Statut</label>
+          <select name="status" class="form-select">
+            {% for s in ['brouillon','envoyée','payée','annulée'] %}
+            <option value="{{ s }}" {{ 'selected' if invoice and invoice.status == s }}>
+              {{ s | capitalize }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Date d'émission</label>
+          <input type="date" name="issue_date" class="form-control" required
+            value="{{ invoice.issue_date if invoice else today }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Date d'échéance</label>
+          <input type="date" name="due_date" class="form-control" required
+            value="{{ invoice.due_date if invoice else due }}">
+        </div>
+      </div>
+    </div>
+
+    <!-- Lignes de la facture -->
+    <div class="stat-card">
+      <h6 class="fw-700 mb-3" style="color:#1e293b; font-weight:700">Articles / Prestations</h6>
+      <table class="table items-table" id="itemsTable">
+        <thead>
+          <tr>
+            <th style="width:50%">Description</th>
+            <th>Quantité</th>
+            <th>Prix unitaire</th>
+            <th>Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody">
+          {% if items %}
+            {% for item in items %}
+            <tr class="item-row">
+              <td><input type="text" name="desc[]" class="form-control" required value="{{ item.description }}"></td>
+              <td><input type="number" name="qty[]" class="form-control qty-input" min="0.01" step="0.01" value="{{ item.quantity }}"></td>
+              <td><input type="number" name="price[]" class="form-control price-input" min="0" step="1" value="{{ item.unit_price }}"></td>
+              <td class="line-total align-middle" style="min-width:90px">{{ (item.quantity * item.unit_price) | int }}</td>
+              <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-trash"></i></button></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr class="item-row">
+              <td><input type="text" name="desc[]" class="form-control" placeholder="Description de la prestation"></td>
+              <td><input type="number" name="qty[]" class="form-control qty-input" min="0.01" step="0.01" value="1"></td>
+              <td><input type="number" name="price[]" class="form-control price-input" min="0" step="1" value="0"></td>
+              <td class="line-total align-middle">0</td>
+              <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-trash"></i></button></td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-outline-primary btn-sm" id="addRow">
+        <i class="bi bi-plus-lg me-1"></i>Ajouter une ligne
+      </button>
+    </div>
+  </div>
+
+  <!-- Colonne droite : totaux & notes -->
+  <div class="col-md-4">
+    <div class="stat-card mb-4">
+      <h6 class="fw-700 mb-3" style="color:#1e293b; font-weight:700">Totaux</h6>
+      <div class="d-flex justify-content-between mb-2">
+        <span class="text-muted small">Sous-total</span>
+        <span id="subtotalDisplay">0</span>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small fw-semibold">Remise (%)</label>
+        <input type="number" name="discount" id="discountInput" class="form-control form-control-sm"
+          min="0" max="100" step="0.1" value="{{ discount | int }}">
+      </div>
+      <div class="d-flex justify-content-between mb-2">
+        <span class="text-muted small">Montant remise</span>
+        <span id="discountDisplay">0</span>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small fw-semibold">TVA (%)</label>
+        <input type="number" name="tax_rate" id="taxInput" class="form-control form-control-sm"
+          min="0" max="100" step="0.1" value="{{ tax_rate | int }}">
+      </div>
+      <div class="d-flex justify-content-between mb-2">
+        <span class="text-muted small">Montant TVA</span>
+        <span id="taxDisplay">0</span>
+      </div>
+      <hr>
+      <div class="d-flex justify-content-between fw-bold" style="font-size:1.1rem">
+        <span>TOTAL</span>
+        <span id="totalDisplay" style="color:#2563eb">0</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <label class="form-label fw-semibold">Notes</label>
+      <textarea name="notes" class="form-control" rows="4"
+        placeholder="Conditions de paiement, remarques...">{{ invoice.notes if invoice else '' }}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 mt-3">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i>{{ action }} la facture
+      </button>
+      <a href="{{ url_for('invoices_list') }}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+  </div>
+
+</div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fmt(n){ return Math.round(n).toLocaleString('fr-FR'); }
+
+function calcTotals(){
+  let subtotal = 0;
+  document.querySelectorAll('.item-row').forEach(row => {
+    const qty   = parseFloat(row.querySelector('.qty-input').value)   || 0;
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    const lt = qty * price;
+    row.querySelector('.line-total').textContent = fmt(lt);
+    subtotal += lt;
+  });
+  const disc    = (parseFloat(document.getElementById('discountInput').value) || 0) / 100;
+  const tax     = (parseFloat(document.getElementById('taxInput').value)      || 0) / 100;
+  const discAmt = subtotal * disc;
+  const taxAmt  = (subtotal - discAmt) * tax;
+  const total   = subtotal - discAmt + taxAmt;
+
+  document.getElementById('subtotalDisplay').textContent = fmt(subtotal);
+  document.getElementById('discountDisplay').textContent = fmt(discAmt);
+  document.getElementById('taxDisplay').textContent      = fmt(taxAmt);
+  document.getElementById('totalDisplay').textContent    = fmt(total);
+}
+
+function newRow(){
+  const tr = document.createElement('tr');
+  tr.className = 'item-row';
+  tr.innerHTML = `
+    <td><input type="text" name="desc[]" class="form-control" placeholder="Description"></td>
+    <td><input type="number" name="qty[]" class="form-control qty-input" min="0.01" step="0.01" value="1"></td>
+    <td><input type="number" name="price[]" class="form-control price-input" min="0" step="1" value="0"></td>
+    <td class="line-total align-middle">0</td>
+    <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-trash"></i></button></td>`;
+  document.getElementById('itemsBody').appendChild(tr);
+  tr.querySelectorAll('input').forEach(i => i.addEventListener('input', calcTotals));
+  tr.querySelector('.remove-row').addEventListener('click', () => { tr.remove(); calcTotals(); });
+}
+
+document.getElementById('addRow').addEventListener('click', newRow);
+document.getElementById('discountInput').addEventListener('input', calcTotals);
+document.getElementById('taxInput').addEventListener('input', calcTotals);
+
+document.querySelectorAll('.item-row').forEach(row => {
+  row.querySelectorAll('input').forEach(i => i.addEventListener('input', calcTotals));
+  row.querySelector('.remove-row').addEventListener('click', () => { row.remove(); calcTotals(); });
+});
+
+calcTotals();
+</script>
+{% endblock %}

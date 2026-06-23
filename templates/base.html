@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Gestionnaire de Factures{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --sidebar-w: 240px;
+    }
+    body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+    /* Sidebar */
+    #sidebar {
+      position: fixed; top: 0; left: 0; height: 100vh; width: var(--sidebar-w);
+      background: linear-gradient(180deg, #1e3a8a 0%, #1d4ed8 100%);
+      display: flex; flex-direction: column; z-index: 100; overflow-y: auto;
+    }
+    #sidebar .brand {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+    #sidebar .brand h1 { color: #fff; font-size: 1.1rem; font-weight: 700; margin: 0; }
+    #sidebar .brand span { color: #93c5fd; font-size: 0.75rem; }
+    #sidebar nav a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 20px; color: rgba(255,255,255,0.8);
+      text-decoration: none; font-size: 0.9rem; transition: all 0.15s;
+    }
+    #sidebar nav a:hover, #sidebar nav a.active {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border-right: 3px solid #93c5fd;
+    }
+    #sidebar nav .nav-section {
+      padding: 12px 20px 4px; color: rgba(255,255,255,0.45);
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+    }
+    /* Main content */
+    #main { margin-left: var(--sidebar-w); min-height: 100vh; }
+    .topbar {
+      background: #fff; border-bottom: 1px solid #e2e8f0;
+      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar h2 { font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0; }
+    .page-content { padding: 28px; }
+    /* Cards */
+    .stat-card {
+      background: #fff; border-radius: 12px; padding: 20px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid #e2e8f0;
+    }
+    .stat-card .label { font-size: 0.8rem; color: #64748b; font-weight: 500; }
+    .stat-card .value { font-size: 1.8rem; font-weight: 700; color: #1e293b; }
+    .stat-card .icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+    }
+    /* Table */
+    .table-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+    .table th { background: #f8fafc; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .5px; color: #64748b; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
+    .table td { vertical-align: middle; color: #334155; font-size: 0.9rem; border-color: #f1f5f9; }
+    /* Badges */
+    .badge-status { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .s-brouillon { background: #f1f5f9; color: #64748b; }
+    .s-envoyee  { background: #dbeafe; color: #1d4ed8; }
+    .s-payee    { background: #dcfce7; color: #15803d; }
+    .s-annulee  { background: #fee2e2; color: #dc2626; }
+    .s-retard   { background: #fef3c7; color: #b45309; }
+    /* Buttons */
+    .btn-primary { background: var(--primary); border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+    /* Flash */
+    .flash-container { position: fixed; top: 16px; right: 16px; z-index: 9999; min-width: 280px; }
+    /* Items table in form */
+    .items-table th { font-size: 0.78rem; color: #64748b; }
+    .items-table input { font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand">
+    <h1><i class="bi bi-receipt-cutoff me-2"></i>FacturePro</h1>
+    <span>Gestion de factures</span>
+  </div>
+  <nav class="mt-2">
+    <div class="nav-section">Principal</div>
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">
+      <i class="bi bi-grid-1x2-fill"></i> Tableau de bord
+    </a>
+    <div class="nav-section">Gestion</div>
+    <a href="{{ url_for('invoices_list') }}" class="{{ 'active' if 'invoice' in (request.endpoint or '') }}">
+      <i class="bi bi-file-earmark-text-fill"></i> Factures
+    </a>
+    <a href="{{ url_for('clients_list') }}" class="{{ 'active' if 'client' in (request.endpoint or '') }}">
+      <i class="bi bi-people-fill"></i> Clients
+    </a>
+    <div class="nav-section">Configuration</div>
+    <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' }}">
+      <i class="bi bi-gear-fill"></i> Paramètres
+    </a>
+  </nav>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div class="topbar">
+    <h2>{% block page_title %}{% endblock %}</h2>
+    <div>{% block topbar_actions %}{% endblock %}</div>
+  </div>
+
+  <!-- Flash messages -->
+  <div class="flash-container">
+    {% for cat, msg in get_flashed_messages(with_categories=True) %}
+    <div class="alert alert-{{ 'success' if cat=='success' else ('danger' if cat=='danger' else 'info') }} alert-dismissible shadow-sm" role="alert">
+      {{ msg }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="page-content">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% block scripts %}{% endblock %}
+<script>
+  // Auto-dismiss alerts after 4s
+  document.querySelectorAll('.alert').forEach(el => {
+    setTimeout(() => { let b = bootstrap.Alert.getOrCreateInstance(el); b && b.close(); }, 4000);
+  });
+</script>
+</body>
+</html>

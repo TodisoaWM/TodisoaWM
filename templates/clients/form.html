@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} client — FacturePro{% endblock %}
+{% block page_title %}{{ action }} un client{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="stat-card">
+      <form method="POST">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required
+              value="{{ client.name if client else '' }}" placeholder="Nom complet ou entreprise">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Email</label>
+            <input type="email" name="email" class="form-control"
+              value="{{ client.email if client else '' }}" placeholder="email@exemple.com">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Téléphone</label>
+            <input type="text" name="phone" class="form-control"
+              value="{{ client.phone if client else '' }}" placeholder="+261 ...">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Adresse</label>
+            <input type="text" name="address" class="form-control"
+              value="{{ client.address if client else '' }}" placeholder="Rue, BP...">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Ville</label>
+            <input type="text" name="city" class="form-control"
+              value="{{ client.city if client else '' }}" placeholder="Antananarivo">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Pays</label>
+            <input type="text" name="country" class="form-control"
+              value="{{ client.country if client else 'Madagascar' }}">
+          </div>
+        </div>
+        <hr class="my-4">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>{{ action }}
+          </button>
+          <a href="{{ url_for('clients_list') }}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

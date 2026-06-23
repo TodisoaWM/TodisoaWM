@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Facture {{ inv.number }} — FacturePro{% endblock %}
+{% block page_title %}Facture {{ inv.number }}{% endblock %}
+{% block topbar_actions %}
+<div class="d-flex gap-2">
+  <a href="{{ url_for('invoice_edit', inv_id=inv.id) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-pencil me-1"></i>Modifier
+  </a>
+  <a href="{{ url_for('invoice_pdf', inv_id=inv.id) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-file-pdf me-1"></i>Télécharger PDF
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if is_overdue %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <strong>Paiement en retard !</strong> L'échéance était le {{ inv.due_date | dateformat }}.
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- Preview de facture -->
+  <div class="col-md-8">
+    <div class="stat-card" style="font-size:.9rem">
+
+      <!-- En-tête -->
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+          <h4 style="color:#2563eb; font-weight:800">{{ company.name }}</h4>
+          <div class="text-muted small">{{ company.address }}</div>
+          <div class="text-muted small">{{ company.city }}</div>
+          <div class="text-muted small">{{ company.email }} {% if company.phone %}· {{ company.phone }}{% endif %}</div>
+        </div>
+        <div class="text-end">
+          <div style="font-size:1.8rem; font-weight:900; color:#1e293b; line-height:1">FACTURE</div>
+          <div class="text-muted"># {{ inv.number }}</div>
+          {% set sc = {'payée':'success','brouillon':'secondary','envoyée':'primary','annulée':'danger'} %}
+          <span class="badge bg-{{ sc.get(inv.status,'secondary') }} mt-1">{{ inv.status | upper }}</span>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-6">
+          <div class="text-muted small fw-semibold mb-1">FACTURER À</div>
+          <div class="fw-semibold">{{ inv.client_name }}</div>
+          <div class="text-muted small">{{ inv.client_address or '' }}</div>
+          <div class="text-muted small">{{ inv.client_city or '' }}{% if inv.client_country %}, {{ inv.client_country }}{% endif %}</div>
+          {% if inv.client_email %}<div class="text-muted small">{{ inv.client_email }}</div>{% endif %}
+          {% if inv.client_phone %}<div class="text-muted small">{{ inv.client_phone }}</div>{% endif %}
+        </div>
+        <div class="col-6 text-end">
+          <div class="text-muted small">Date d'émission : <strong>{{ inv.issue_date | dateformat }}</strong></div>
+          <div class="text-muted small">Date d'échéance : <strong class="{{ 'text-danger' if is_overdue else '' }}">{{ inv.due_date | dateformat }}</strong></div>
+        </div>
+      </div>
+
+      <!-- Tableau articles -->
+      <table class="table table-sm">
+        <thead style="background:#f8fafc">
+          <tr>
+            <th>Description</th>
+            <th class="text-center">Qté</th>
+            <th class="text-end">Prix unit.</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.description }}</td>
+            <td class="text-center">{{ item.quantity | int }}</td>
+            <td class="text-end">{{ item.unit_price | currency }}</td>
+            <td class="text-end fw-semibold">{{ (item.quantity * item.unit_price) | currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Totaux -->
+      <div class="d-flex justify-content-end">
+        <table style="width:260px; font-size:.88rem">
+          <tr><td class="text-muted py-1">Sous-total</td><td class="text-end">{{ subtotal | currency }}</td></tr>
+          {% if inv.discount > 0 %}
+          <tr><td class="text-muted py-1">Remise ({{ inv.discount | int }}%)</td><td class="text-end text-danger">- {{ discount_amt | currency }}</td></tr>
+          {% endif %}
+          <tr><td class="text-muted py-1">TVA ({{ inv.tax_rate | int }}%)</td><td class="text-end">{{ tax_amt | currency }}</td></tr>
+          <tr style="border-top:2px solid #2563eb">
+            <td class="fw-bold pt-2" style="color:#2563eb">TOTAL</td>
+            <td class="text-end fw-bold pt-2" style="color:#2563eb; font-size:1.1rem">{{ total | currency }}</td>
+          </tr>
+        </table>
+      </div>
+
+      {% if inv.notes %}
+      <div class="mt-4 p-3 rounded" style="background:#f8fafc">
+        <div class="small fw-semibold text-muted mb-1">Notes</div>
+        <div class="small">{{ inv.notes }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Colonne droite : actions -->
+  <div class="col-md-4">
+    <!-- Changer statut -->
+    <div class="stat-card mb-3">
+      <h6 class="fw-700 mb-3" style="font-weight:700">Changer le statut</h6>
+      {% for s, label, color in [
+          ('brouillon','Brouillon','secondary'),
+          ('envoyée','Marquer comme envoyée','primary'),
+          ('payée','Marquer comme payée','success'),
+          ('annulée','Annuler la facture','danger')] %}
+      {% if inv.status != s %}
+      <form method="POST" action="{{ url_for('invoice_status', inv_id=inv.id) }}" class="mb-2">
+        <input type="hidden" name="status" value="{{ s }}">
+        <button class="btn btn-outline-{{ color }} btn-sm w-100">{{ label }}</button>
+      </form>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- Infos -->
+    <div class="stat-card mb-3">
+      <h6 class="fw-700 mb-3" style="font-weight:700">Résumé</h6>
+      <div class="d-flex justify-content-between small mb-1">
+        <span class="text-muted">Montant total</span>
+        <span class="fw-semibold">{{ total | currency }}</span>
+      </div>
+      <div class="d-flex justify-content-between small mb-1">
+        <span class="text-muted">Statut</span>
+        <span class="badge-status s-{{ inv.status | replace('é','e') | replace('è','e') }}">{{ inv.status }}</span>
+      </div>
+      <div class="d-flex justify-content-between small">
+        <span class="text-muted">Articles</span>
+        <span>{{ items | length }}</span>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="stat-card" style="border-color:#fee2e2">
+      <h6 class="fw-700 mb-2" style="font-weight:700; color:#dc2626">Zone dangereuse</h6>
+      <form method="POST" action="{{ url_for('invoice_delete', inv_id=inv.id) }}"
+        onsubmit="return confirm('Supprimer définitivement cette facture ?')">
+        <button class="btn btn-outline-danger btn-sm w-100">
+          <i class="bi bi-trash me-1"></i>Supprimer la facture
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
