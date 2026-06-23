@@ -18,9 +18,12 @@ subprojects {
 
 // Force compileSdk 35 for all Android plugin subprojects (fixes android:attr/lStar)
 subprojects {
-    afterEvaluate {
-        extensions.findByType<com.android.build.gradle.BaseExtension>()?.apply {
-            compileSdkVersion(35)
+    // Some projects are already evaluated before this block runs (Gradle lifecycle quirk)
+    if (state.executed) {
+        extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileSdkVersion(35)
+    } else {
+        afterEvaluate {
+            extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileSdkVersion(35)
         }
     }
 }
