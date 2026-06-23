@@ -1,7 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:typed_data';
-import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../providers/app_provider.dart';
 import '../../models/invoice.dart';
 import '../../theme.dart';
@@ -259,10 +260,14 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
 
   Future<void> _showPdf(Invoice inv, Map<String, String> settings) async {
     final pdfBytes = await PdfBuilder.build(inv, settings);
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/facture_${inv.number}.pdf');
+    await file.writeAsBytes(pdfBytes);
     if (!mounted) return;
-    await Printing.layoutPdf(
-        onLayout: (_) async => Uint8List.fromList(pdfBytes),
-        name: 'facture_${inv.number}.pdf');
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'application/pdf')],
+      subject: 'Facture ${inv.number}',
+    );
   }
 
   void _onMenuAction(String action, Invoice inv) async {
